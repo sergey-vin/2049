@@ -44,8 +44,13 @@ sub console_read_key()
   return ($key, @keys);
 }
 
-sub console_is_arrow($)
-{
+sub console_is_esc($) {
+  my $chars = shift;
+  my $char = join ' ', map { ord $_ } @$chars;
+  return $char eq '27 27';
+}
+
+sub console_is_arrow($) {
   my $chars = shift;
   my $char = join ' ', map { ord $_ } @$chars;
 
@@ -91,7 +96,7 @@ sub print_map($){
 
   print "Hello!\n";
   print "  <-, ->, v, ^ | to move the map\n";
-  print "  .            | to exit\n";
+  print "  Esc          | to exit\n";
   print "\n";
 
   my ($map) = @_;
@@ -144,7 +149,7 @@ sub menu()
     my $res;
 
     # exit
-    if ($char_ext[0] eq '.')
+    if (console_is_esc(\@char_ext))
     {
       menu_exit();
     } # if..char
