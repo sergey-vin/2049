@@ -66,31 +66,40 @@ sub console_is_arrow($)
 #### util functions
 
 sub new_map() {
-  return [
+  my $map = [
     [0,0,0,0],
-    [0,2,0,0],
     [0,0,0,0],
-    [0,0,2,0],
+    [0,0,0,0],
+    [0,0,0,0],
   ];
+  sub get_xy() {
+    return my @res = (int rand(4), int rand(4));
+  }
+  my @uno = get_xy();
+  my @duo;
+  do { @duo = get_xy(); } while ("@duo" eq "@uno");
+  $map->[$uno[0]][$uno[1]] = 2;
+  $map->[$duo[0]][$duo[1]] = 2;
+  return $map;
 }
 
 
 sub print_map($){
-    # http://stackoverflow.com/questions/197933/whats-the-best-way-to-clear-the-screen-in-perl
-    print "\033[2J";    #clear the screen
-    print "\033[0;0H"; #jump to 0,0
+  # http://stackoverflow.com/questions/197933/whats-the-best-way-to-clear-the-screen-in-perl
+  print "\033[2J";    #clear the screen
+  print "\033[0;0H"; #jump to 0,0
 
-    print "Hello!\n";
-    print "  <-, ->, v, ^ | to move the map\n";
-    print "  .            | to exit\n";
-    print "\n";
+  print "Hello!\n";
+  print "  <-, ->, v, ^ | to move the map\n";
+  print "  .            | to exit\n";
+  print "\n";
 
-    my ($map) = @_;
-    for (my $i = 0; $i < 4; $i ++)
-    {
-      print join("\t", @{$map->[$i]}), "\n"
-    }
-    print "> \n"
+  my ($map) = @_;
+  for (my $i = 0; $i < 4; $i ++)
+  {
+    print join("\t", @{$map->[$i]}), "\n"
+  }
+  print "> \n"
 }
 
 sub transition($$) {
