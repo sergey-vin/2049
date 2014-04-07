@@ -72,13 +72,15 @@ sub console_is_arrow($) {
 
 sub new_map() {
   my $map = [
-    [0,0,0,0],
-    [0,0,0,0],
-    [0,0,0,0],
-    [0,0,0,0],
+    [0,0,0,0,0,0],
+    [0,0,0,0,0,0],
+    [0,0,0,0,0,0],
+    [0,0,0,0,0,0],
+    [0,0,0,0,0,0],
+    [0,0,0,0,0,0],
   ];
   sub get_xy() {
-    return my @res = (int rand(4), int rand(4));
+    return my @res = (int rand(4) + 1, int rand(4) + 1);
   }
   my @uno = get_xy();
   my @duo;
@@ -100,7 +102,7 @@ sub print_map($){
   print "\n";
 
   my ($map) = @_;
-  for (my $i = 0; $i < 4; $i ++)
+  for (my $i = 1; $i <= 4; $i ++)
   {
     print join("\t", @{$map->[$i]}), "\n"
   }
@@ -112,11 +114,37 @@ sub transition($$) {
   if ($dir eq 'left'){
     print 'left';
   } elsif ($dir eq 'right') {
-    my $is_movable = 1;
-    for (my $i = 0; $i < 4; $i++) {
-      
+    my $is_movable = 0;
+    for (my $i = 1; $i <= 4; $i++) {
+      for (my $j = 4; $j >= 1; $j--) {
+        # merge
+        if ($map->[$i][$j-1] == $map->[$i][$j] && $map->[$i][$j] != 0) {
+          $is_movable = 1;
+          $map->[$i][$j] += $map->[$i][$j-1];
+          $map->[$i][$j-1] = 0;
+        }
+        
+        # shift
+        my $first_nonzero = $j;
+        for (; $first_nonzero >= 0; $first_nonzero --) {
+          last if ($map->[$i][$first_nonzero] != 0);
+        }
+        my $shift_gap = $j - $first_nonzero;
+        for (my $k = $first_nonzero; $k >= 1 && $shift_gap >0; $k --) {
+          $is_movable = 1;
+          $map->[$i][$k + $shift_gap] = $map->[$i][$k];
+          $map->[$i][$k] = 0;
+        }
+      }
+    }
+    if ($is_movable) {
+      # generate new piece
+      #my @free_spots = grep { $_ > 0 } map { $_->[0] } @$map;
+      #menu_gameover() if (@free_spots == 0);
+      #gen...
     }
     print 'right';
+    return ($is_movable, $map);
   } elsif ($dir eq 'up') {
     print 'up';
   } elsif ($dir eq 'down') {
@@ -178,6 +206,8 @@ sub menu()
 #### -----------------------------
 #### unit tests
 
+use List::Util qw/sum/;
+
 # fills this array:
 # TEST [000], FILE [2049.pl], LINE [522], FUNC [main::unit_ok], COND [PASS!]
 sub unit_ok($$)
@@ -207,17 +237,65 @@ sub unit_tests()
 {
   my $units = {num_fails => 0, all => []};
 
-  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'left');
-  unit_ok(\$units, $res);
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'left');
+  unit_ok(\$units, $moved);
 
-  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'down');
-  unit_ok(\$units, $res);
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'down');
+  unit_ok(\$units, $moved);
 
-  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'right');
-  unit_ok(\$units, ! $res);
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 0);
+  unit_ok(\$units, sum (@{$new_map->[1]}) == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
 
-  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'right');
-  unit_ok(\$units, ! $res);
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, $moved);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 0, 0],
+                                       [0, 0, 0, 0, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, $moved);
+  
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 2, 0],
+                                       [0, 0, 0, 0, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, !$moved);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'up');
+  unit_ok(\$units, !$moved);
 
   return $units->{num_fails};
 }
