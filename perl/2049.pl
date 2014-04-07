@@ -99,69 +99,86 @@ sub new_map() {
 
 
 sub print_map($){
-  # http://stackoverflow.com/questions/197933/whats-the-best-way-to-clear-the-screen-in-perl
-  print "\033[2J";    #clear the screen
-  print "\033[0;0H"; #jump to 0,0
+  if (0) {
+    # http://stackoverflow.com/questions/197933/whats-the-best-way-to-clear-the-screen-in-perl
+    print "\033[2J";    #clear the screen
+    print "\033[0;0H"; #jump to 0,0
 
-  print "Hello!\n";
-  print "  <-, ->, v, ^ | to move the map\n";
-  print "  Esc          | to exit\n";
-  print "\n";
+    print "Hello!\n";
+    print "  <-, ->, v, ^ | to move the map\n";
+    print "  Esc          | to exit\n";
+    print "\n";
+  }
 
   my ($map) = @_;
   for (my $i = 1; $i <= 4; $i ++)
   {
-    print join("\t", @{$map->[$i]}), "\n"
+    print STDERR join("\t", @{$map->[$i]}[1..4]), "\n"
   }
-  print "> \n"
+  print STDERR "\n";
 }
 
 sub transition($$) {
-  my ($map, $dir) = @_;
-  if ($dir eq 'left'){
-    print 'left';
-  } elsif ($dir eq 'right') {
-    my $is_movable = 0;
-    for (my $i = 1; $i <= 4; $i++) {
-      for (my $j = 4; $j >= 1; $j--) {
-        # merge
-        if ($map->[$i][$j-1] == $map->[$i][$j] && $map->[$i][$j] != 0) {
-          $is_movable = 1;
-          $map->[$i][$j] += $map->[$i][$j-1];
-          $map->[$i][$j-1] = 0;
-        }
-        
-        # shift
-        my $first_nonzero = $j;
-        for (; $first_nonzero >= 0; $first_nonzero --) {
-          last if ($map->[$i][$first_nonzero] != 0);
-        }
-        my $shift_gap = $j - $first_nonzero;
-        for (my $k = $first_nonzero; $k >= 1 && $shift_gap >0; $k --) {
-          $is_movable = 1;
-          $map->[$i][$k + $shift_gap] = $map->[$i][$k];
-          $map->[$i][$k] = 0;
-        }
-      }
+  our ($map, $dir) = @_;
+  our $is_movable = 0;
+
+  sub cell($$;$) : lvalue {
+    my ($y, $x, $print) = @_;
+    if ($dir eq 'left'){
+      $x = 5 - $x;
+      #print STDERR "$print\t$y,$x = $map->[$y][$x]\n" if ($print);
+      return $map->[$y][$x];
+    } elsif ($dir eq 'right') {
+      #print STDERR "$print\t$y,$x = $map->[$y][$x]\n" if ($print);
+      return $map->[$y][$x];
+    } elsif ($dir eq 'up') {
+      return $map->[$y][$x];
+    } elsif ($dir eq 'down') {
+      return $map->[$y][$x];
     }
-    if ($is_movable) {
-      # generate new piece
-      #my @free_spots = grep { $_ > 0 } map { $_->[0] } @$map;
-      #menu_gameover() if (@free_spots == 0);
-      #gen...
-    }
-    print 'right';
-    return ($is_movable, $map);
-  } elsif ($dir eq 'up') {
-    print 'up';
-  } elsif ($dir eq 'down') {
-    print 'down';
-  } else {
-    print 'WRONG DIR';
-    return (0, $map);
+    die ('WRONG DIR');
   }
-  print "\n";
-  return (1, $map);
+
+  sub shift_cells($$) {
+    my ($i, $start_from) = @_;
+    my $first_nonzero = $start_from;
+    for (; $first_nonzero >= 0; $first_nonzero --) {
+      last if (cell($i, $first_nonzero) != 0);
+    }
+    my $shift_gap = $start_from - $first_nonzero;
+    for (my $k = $first_nonzero; $k >= 1 && $shift_gap >0; $k --) {
+      $is_movable = 1;
+      cell($i, $k + $shift_gap) = cell($i, $k);
+      cell($i, $k) = 0;
+    }
+  }
+
+  sub merge_cells($$) {
+    my ($i, $j) = @_;
+    #print_map($map);
+    if (cell($i, $j-1, 'prev') == cell($i, $j, 'cur') && cell($i, $j) != 0) {
+      $is_movable = 1;
+      cell($i, $j) += cell($i, $j-1);
+      cell($i, $j-1) = 0;
+    }
+  }
+
+  for my $i (1..1) { #TODO 4
+    shift_cells($i, 4);
+
+    for my $j (reverse 1..4) {
+      merge_cells($i, $j);
+      shift_cells($i, $j);
+    }
+  }
+  if ($is_movable) {
+    # generate new piece
+    #my @free_spots = grep { $_ > 0 } map { $_->[0] } @$map;
+    #menu_gameover() if (@free_spots == 0);
+    #gen...
+  }
+    
+  return ($is_movable, $map);
 }
 
 #### util functions
@@ -245,12 +262,31 @@ sub unit_tests()
   my $units = {num_fails => 0, all => []};
 
   my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 2, 2, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 2, 2, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0] ], 'left');
   unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 2, 2, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
 
   my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 2, 2, 0],
@@ -268,6 +304,18 @@ sub unit_tests()
                                        [0, 0, 0, 0, 0, 0] ], 'right');
   unit_ok(\$units, $moved);
   unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 0);
+  unit_ok(\$units, sum (@{$new_map->[1]}) == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 2, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
   unit_ok(\$units, $new_map->[1][3] == 0);
   unit_ok(\$units, sum (@{$new_map->[1]}) == 4);
   unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
