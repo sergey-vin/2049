@@ -55,10 +55,17 @@ sub console_is_arrow($) {
   my $char = join ' ', map { ord $_ } @$chars;
 
   my $keys = {
+    # mac
     '27 27 91 68' => 'left',
     '27 27 91 65' => 'up',
     '27 27 91 67' => 'right',
     '27 27 91 66' => 'down',
+
+    # linux
+    '27 91 68' => 'left',
+    '27 91 65' => 'up',
+    '27 91 67' => 'right',
+    '27 91 66' => 'down',
   };
   return $keys->{$char};
 }
