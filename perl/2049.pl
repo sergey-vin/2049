@@ -112,6 +112,10 @@ sub transition($$) {
   if ($dir eq 'left'){
     print 'left';
   } elsif ($dir eq 'right') {
+    my $is_movable = 1;
+    for (my $i = 0; $i < 4; $i++) {
+      
+    }
     print 'right';
   } elsif ($dir eq 'up') {
     print 'up';
@@ -203,14 +207,17 @@ sub unit_tests()
 {
   my $units = {num_fails => 0, all => []};
 
-  my $map = [
-    [0, 0, 2, 2],
-    [0, 0, 0, 0],
-    [0, 0, 0, 0],
-    [0, 0, 0, 0],
-  ];
-  my ($res, $new_map) = transition($map, 'left');
+  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'left');
   unit_ok(\$units, $res);
+
+  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'down');
+  unit_ok(\$units, $res);
+
+  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, ! $res);
+
+  my ($res, $new_map) = transition([ [0, 0, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, ! $res);
 
   return $units->{num_fails};
 }
