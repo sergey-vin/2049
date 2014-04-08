@@ -76,6 +76,9 @@ sub console_is_arrow($) {
 
 #### -----------------------------
 #### util functions
+sub get_xy() {
+  return my @res = (int rand(4) + 1, int rand(4) + 1);
+}
 
 sub new_map() {
   my $map = [
@@ -86,9 +89,6 @@ sub new_map() {
     [0,0,0,0,0,0],
     [0,0,0,0,0,0],
   ];
-  sub get_xy() {
-    return my @res = (int rand(4) + 1, int rand(4) + 1);
-  }
   my @uno = get_xy();
   my @duo;
   do { @duo = get_xy(); } while ("@duo" eq "@uno");
@@ -118,8 +118,8 @@ sub print_map($){
   print STDERR "\n";
 }
 
-sub transition($$) {
-  our ($map, $dir) = @_;
+sub transition($$;$) {
+  our ($map, $dir, $need_generate) = @_;
   our $is_movable = 0;
 
   sub cell($$;$) {
@@ -177,8 +177,12 @@ sub transition($$) {
       shift_cells($i, $j - 1);
     }
   }
-  if ($is_movable) {
+  if ($is_movable && $need_generate) {
     # generate new piece
+    my @new;
+    do { @new = get_xy(); } while ( $map->[$new[0]][$new[1]] != 0);
+    $map->[$new[0]][$new[1]] = 2;
+    
     #my @free_spots = grep { $_ > 0 } map { $_->[0] } @$map;
     #menu_gameover() if (@free_spots == 0);
     #gen...
@@ -218,7 +222,7 @@ sub menu()
 
     elsif ($arrow = console_is_arrow(\@char_ext))
     {
-      ($res, $map) = transition($map, $arrow);
+      ($res, $map) = transition($map, $arrow, 1);
       if ($res)
       {
         print_map($map);
