@@ -132,11 +132,15 @@ sub transition($$) {
       #print STDERR "$print\t$y,$x = $map->[$y][$x]\n" if ($print);
       return $map->[$y][$x];
     } elsif ($dir eq 'up') {
-      return $map->[$y][$x];
+      $x = 5 - $x;
+      #print STDERR "$print\t$y,$x = $map->[$x][$y]\n" if ($print);
+      return $map->[$x][$y];
     } elsif ($dir eq 'down') {
-      return $map->[$y][$x];
+      #print STDERR "$print\t$y,$x = $map->[$x][$y]\n" if ($print);
+      return $map->[$x][$y];
     }
     die ('WRONG DIR');
+    return undef;
   }
 
   sub shift_cells($$) {
@@ -156,6 +160,7 @@ sub transition($$) {
   sub merge_cells($$) {
     my ($i, $j) = @_;
     #print_map($map);
+    # TODO add 2049 check
     if (cell($i, $j-1, 'prev') == cell($i, $j, 'cur') && cell($i, $j) != 0) {
       $is_movable = 1;
       cell($i, $j) += cell($i, $j-1);
@@ -163,12 +168,14 @@ sub transition($$) {
     }
   }
 
-  for my $i (1..1) { #TODO 4
-    shift_cells($i, 4);
+  for my $i (1..4) {
+    for my $j (reverse 1..4) {
+      shift_cells($i, $j);
+    }
 
     for my $j (reverse 1..4) {
       merge_cells($i, $j);
-      shift_cells($i, $j);
+      shift_cells($i, $j - 1);
     }
   }
   if ($is_movable) {
@@ -231,6 +238,7 @@ sub menu()
 #### unit tests
 
 use List::Util qw/sum/;
+use Storable qw(dclone);
 
 # fills this array:
 # TEST [000], FILE [2049.pl], LINE [522], FUNC [main::unit_ok], COND [PASS!]
@@ -239,13 +247,8 @@ sub unit_ok($$)
   my ($p_units, $cond) = @_;
 
   my @caller = caller(0);
-  my $test_line = sprintf("TEST [%03d], FILE [%s], LINE [%d], FUNC [%s], COND [%s]",
-    $$p_units->{num_all}++,
-    @caller[1 .. 3],
-    $cond ? "PASS!" : "FAIL :("
-  );
+  $$p_units->{num_all}++;
 
-  push @{$$p_units->{all}}, $test_line;
   if ($cond)
   {
   }
@@ -254,6 +257,17 @@ sub unit_ok($$)
     $$p_units->{num_fails} ++;
   }
 
+  my $pass_count = $$p_units->{num_all} - $$p_units->{num_fails};
+  my $test_line = sprintf("TEST [%03d], FILE [%s], LINE [%d], FUNC [%s], COND [%s], RESULTS [%0.1f%% (%s/%s)]",
+    $$p_units->{num_all},
+    @caller[1 .. 3],
+    $cond ? "PASS!" : "FAIL :(",
+    100.0 * ($pass_count / $$p_units->{num_all}),
+    $pass_count,
+    $$p_units->{num_all}
+  );
+  push @{$$p_units->{all}}, $test_line;
+
   print STDERR "$test_line\n";
 }
 
@@ -261,87 +275,35 @@ sub unit_tests()
 {
   my $units = {num_fails => 0, all => []};
 
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 2, 2, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  #### #### movable? #### ####
+
+  my $map_no_sum = [ [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 2, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 2, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_no_sum), 'down');
   unit_ok(\$units, $moved);
-  unit_ok(\$units, $new_map->[1][4] == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_no_sum), 'up');
+  unit_ok(\$units, $moved);
+
+  my ($moved, $new_map) = transition(dclone($map_no_sum), 'right');
+  unit_ok(\$units, $moved);
+
+  my ($moved, $new_map) = transition(dclone($map_no_sum), 'left');
+  unit_ok(\$units, $moved);
+
+  #### #### not movable? #### ####
 
   my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 2, 2, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'left');
-  unit_ok(\$units, $moved);
-  unit_ok(\$units, $new_map->[1][1] == 4);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 2, 2, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'left');
-  unit_ok(\$units, $moved);
-  unit_ok(\$units, $new_map->[1][1] == 4);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 2, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0] ], 'down');
-  unit_ok(\$units, $moved);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 2, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'right');
-  unit_ok(\$units, $moved);
-  unit_ok(\$units, $new_map->[1][4] == 4);
-  unit_ok(\$units, $new_map->[1][3] == 0);
-  unit_ok(\$units, sum (@{$new_map->[1]}) == 4);
-  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 2, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'left');
-  unit_ok(\$units, $moved);
-  unit_ok(\$units, $new_map->[1][1] == 4);
-  unit_ok(\$units, $new_map->[1][3] == 0);
-  unit_ok(\$units, sum (@{$new_map->[1]}) == 4);
-  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 2, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'right');
-  unit_ok(\$units, $moved);
-
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 2, 0, 0],
-                                       [0, 0, 0, 0, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'right');
-  unit_ok(\$units, $moved);
-  
-  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 2, 0],
-                                       [0, 0, 0, 0, 2, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0] ], 'right');
   unit_ok(\$units, !$moved);
 
   my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
@@ -351,6 +313,186 @@ sub unit_tests()
                                        [0, 0, 0, 0, 0, 0],
                                        [0, 0, 0, 0, 0, 0] ], 'up');
   unit_ok(\$units, !$moved);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 2, 0],
+                                       [0, 0, 0, 0, 2, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'right');
+  unit_ok(\$units, !$moved);
+
+  my ($moved, $new_map) = transition([ [0, 0, 0, 0, 0, 0],
+                                       [0, 2, 0, 0, 0, 0],
+                                       [0, 2, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0] ], 'left');
+  unit_ok(\$units, !$moved);
+
+  #### #### basic sum+shift #### ####
+
+  my $map_sum_hor = [ [0, 0, 0, 0, 0, 0],
+                      [0, 0, 2, 2, 0, 0],
+                      [0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_hor), 'down');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[4][2] == 2);
+  unit_ok(\$units, $new_map->[4][3] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_hor), 'up');
+  unit_ok(\$units, !$moved);
+  unit_ok(\$units, $new_map->[1][2] == 2);
+  unit_ok(\$units, $new_map->[1][3] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_hor), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_hor), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my $map_sum_ver = [ [0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0],
+                      [0, 0, 2, 0, 0, 0],
+                      [0, 0, 2, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_ver), 'down');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[4][2] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_ver), 'up');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][2] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_ver), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[2][4] == 2);
+  unit_ok(\$units, $new_map->[3][4] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_ver), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[2][1] == 2);
+  unit_ok(\$units, $new_map->[3][1] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 4);
+
+  #### #### more complex sum + shift #### #####
+
+  my $map_sum_1 = [ [0, 0, 0, 0, 0, 0],
+                    [0, 2, 2, 2, 2, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+  unit_ok(\$units, $new_map->[1][2] == 4);
+  
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 4);
+
+  my $map_sum_1 = [ [0, 0, 0, 0, 0, 0],
+                    [0, 2, 2, 2, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+  unit_ok(\$units, $new_map->[1][2] == 2);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 2);
+
+  my $map_sum_1 = [ [0, 0, 0, 0, 0, 0],
+                    [0, 2, 0, 0, 2, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_1), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+
+  #### #### complex sum+shift #### ####
+
+  my $map_sum_2 = [ [0, 0, 0, 0, 0, 0],
+                    [0, 2, 2, 2, 2, 0],
+                    [0, 0, 2, 2, 0, 0],
+                    [0, 2, 0, 0, 2, 0],
+                    [0, 2, 2, 2, 2, 0],
+                    [0, 0, 0, 0, 0, 0] ];
+
+  my ($moved, $new_map) = transition(dclone($map_sum_2), 'right');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 4);
+  unit_ok(\$units, $new_map->[2][4] == 4);
+  unit_ok(\$units, $new_map->[3][4] == 4);
+  unit_ok(\$units, $new_map->[4][4] == 4);
+  unit_ok(\$units, $new_map->[4][3] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 24);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_2), 'left');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+  unit_ok(\$units, $new_map->[1][2] == 4);
+  unit_ok(\$units, $new_map->[2][1] == 4);
+  unit_ok(\$units, $new_map->[3][1] == 4);
+  unit_ok(\$units, $new_map->[4][1] == 4);
+  unit_ok(\$units, $new_map->[4][2] == 4);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 24);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_2), 'down');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[4][1] == 4);
+  unit_ok(\$units, $new_map->[4][2] == 4);
+  unit_ok(\$units, $new_map->[4][3] == 4);
+  unit_ok(\$units, $new_map->[4][4] == 4);
+  unit_ok(\$units, $new_map->[3][1] == 2);
+  unit_ok(\$units, $new_map->[3][2] == 2);
+  unit_ok(\$units, $new_map->[3][3] == 2);
+  unit_ok(\$units, $new_map->[3][4] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 16 + 8);
+
+  my ($moved, $new_map) = transition(dclone($map_sum_2), 'up');
+  unit_ok(\$units, $moved);
+  unit_ok(\$units, $new_map->[1][1] == 4);
+  unit_ok(\$units, $new_map->[1][2] == 4);
+  unit_ok(\$units, $new_map->[1][3] == 4);
+  unit_ok(\$units, $new_map->[1][4] == 4);
+  unit_ok(\$units, $new_map->[2][1] == 2);
+  unit_ok(\$units, $new_map->[2][2] == 2);
+  unit_ok(\$units, $new_map->[2][3] == 2);
+  unit_ok(\$units, $new_map->[2][4] == 2);
+  unit_ok(\$units, sum (map { sum @$_ } @$new_map) == 16 + 8);
 
   return $units->{num_fails};
 }
