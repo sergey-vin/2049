@@ -122,25 +122,24 @@ sub transition($$) {
   our ($map, $dir) = @_;
   our $is_movable = 0;
 
-  sub cell($$;$) : lvalue {
-    my ($y, $x, $print) = @_;
+  sub cell($$;$) {
+    my ($y, $x, $set_val) = @_;
     if ($dir eq 'left'){
       $x = 5 - $x;
-      #print STDERR "$print\t$y,$x = $map->[$y][$x]\n" if ($print);
+      $map->[$y][$x] = $set_val if defined ($set_val);
       return $map->[$y][$x];
     } elsif ($dir eq 'right') {
-      #print STDERR "$print\t$y,$x = $map->[$y][$x]\n" if ($print);
+      $map->[$y][$x] = $set_val if defined ($set_val);
       return $map->[$y][$x];
     } elsif ($dir eq 'up') {
       $x = 5 - $x;
-      #print STDERR "$print\t$y,$x = $map->[$x][$y]\n" if ($print);
+      $map->[$x][$y] = $set_val if defined ($set_val);
       return $map->[$x][$y];
     } elsif ($dir eq 'down') {
-      #print STDERR "$print\t$y,$x = $map->[$x][$y]\n" if ($print);
+      $map->[$x][$y] = $set_val if defined ($set_val);
       return $map->[$x][$y];
     }
     die ('WRONG DIR');
-    return undef;
   }
 
   sub shift_cells($$) {
@@ -152,8 +151,8 @@ sub transition($$) {
     my $shift_gap = $start_from - $first_nonzero;
     for (my $k = $first_nonzero; $k >= 1 && $shift_gap >0; $k --) {
       $is_movable = 1;
-      cell($i, $k + $shift_gap) = cell($i, $k);
-      cell($i, $k) = 0;
+      cell($i, $k + $shift_gap, cell($i, $k));
+      cell($i, $k, 0);
     }
   }
 
@@ -161,10 +160,10 @@ sub transition($$) {
     my ($i, $j) = @_;
     #print_map($map);
     # TODO add 2049 check
-    if (cell($i, $j-1, 'prev') == cell($i, $j, 'cur') && cell($i, $j) != 0) {
+    if (cell($i, $j-1) == cell($i, $j) && cell($i, $j) != 0) {
       $is_movable = 1;
-      cell($i, $j) += cell($i, $j-1);
-      cell($i, $j-1) = 0;
+      cell($i, $j, cell($i, $j) + cell($i, $j-1));
+      cell($i, $j-1, 0);
     }
   }
 
