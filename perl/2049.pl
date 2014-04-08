@@ -99,7 +99,7 @@ sub new_map() {
 
 
 sub print_map($){
-  if (0) {
+  if (1) {
     # http://stackoverflow.com/questions/197933/whats-the-best-way-to-clear-the-screen-in-perl
     print "\033[2J";    #clear the screen
     print "\033[0;0H"; #jump to 0,0
@@ -113,7 +113,7 @@ sub print_map($){
   my ($map) = @_;
   for (my $i = 1; $i <= 4; $i ++)
   {
-    print STDERR join("\t", @{$map->[$i]}[1..4]), "\n"
+    print STDERR join("\t", map { $_ == 0 ? '.' : $_ } @{$map->[$i]}[1..4]), "\n"
   }
   print STDERR "\n";
 }
