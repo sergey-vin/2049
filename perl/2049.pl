@@ -11,6 +11,8 @@ END
 }
 
 use Data::Dumper;
+use List::Util qw/sum max/;
+our $win_goal = 2049;
 
 #### -----------------------------
 #### Console input
@@ -121,6 +123,7 @@ sub print_map($){
 sub transition($$;$) {
   our ($map, $dir, $need_generate) = @_;
   our $is_movable = 0;
+  our $is_win = 0;
 
   sub cell($$;$) {
     my ($y, $x, $set_val) = @_;
@@ -160,9 +163,11 @@ sub transition($$;$) {
     my ($i, $j) = @_;
     #print_map($map);
     # TODO add 2049 check
-    if (cell($i, $j-1) == cell($i, $j) && cell($i, $j) != 0) {
+    my $cell_prev = cell($i, $j-1);
+    my $cell_curr = cell($i, $j);
+    if (($cell_prev == $cell_curr || ($cell_prev + $cell_curr == $win_goal && ($cell_prev == 1 || $cell_curr == 1))) && $cell_curr != 0) {
       $is_movable = 1;
-      cell($i, $j, cell($i, $j) + cell($i, $j-1));
+      $is_win = 1 if ($win_goal == cell($i, $j, cell($i, $j) + cell($i, $j-1)));
       cell($i, $j-1, 0);
     }
   }
@@ -177,11 +182,18 @@ sub transition($$;$) {
       shift_cells($i, $j - 1);
     }
   }
+  if ($is_win) {
+    print_map($map);
+    menu_win();
+  }
   if ($is_movable && $need_generate) {
     # generate new piece
     my @new;
     do { @new = get_xy(); } while ( $map->[$new[0]][$new[1]] != 0);
-    $map->[$new[0]][$new[1]] = 2;
+    my $max_piece = max (map { max @$_ } @$map);
+    # 2048 for 2049 is a threshold for spawning 1s
+    my $new_piece = $max_piece >= $win_goal-1 ? 1 : 2;
+    $map->[$new[0]][$new[1]] = $new_piece;
     
     #my @free_spots = grep { $_ > 0 } map { $_->[0] } @$map;
     #menu_gameover() if (@free_spots == 0);
@@ -196,6 +208,10 @@ sub transition($$;$) {
 
 #### -----------------------------
 #### menu
+
+sub menu_win() {
+    die "you win!\n";
+}
 
 sub menu_exit()
 {
@@ -240,7 +256,6 @@ sub menu()
 #### -----------------------------
 #### unit tests
 
-use List::Util qw/sum/;
 use Storable qw(dclone);
 
 # fills this array:
