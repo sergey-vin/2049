@@ -42,6 +42,7 @@ sub console_read_key()
     }
   }
   ReadMode 1;
+  #print STDERR join ('', map {ord} @keys), "\n";
   $key = pack "U0C*", unpack "C*", join ('', @keys);
   return ($key, @keys);
 }
@@ -57,6 +58,12 @@ sub console_is_arrow($) {
   my $char = join ' ', map { ord $_ } @$chars;
 
   my $keys = {
+    # win (ASDW)
+    '97 97' => 'left',
+    '119 119' => 'up',
+    '100 100' => 'right',
+    '115 115' => 'down',
+
     # mac
     '27 27 91 68' => 'left',
     '27 27 91 65' => 'up',
@@ -107,8 +114,8 @@ sub print_map($){
     print "\033[0;0H"; #jump to 0,0
 
     print "Hello!\n";
-    print "  <-, ->, v, ^ | to move the map\n";
-    print "  Esc          | to exit\n";
+    print "  <-, ->, v, ^  or a,s,d,w | to move the map\n";
+    print "  Esc           or q       | to exit\n";
     print "\n";
   }
 
@@ -231,7 +238,7 @@ sub menu()
     my $res;
 
     # exit
-    if (console_is_esc(\@char_ext))
+    if (console_is_esc(\@char_ext) || $char_ext[0] eq 'q')
     {
       menu_exit();
     } # if..char
